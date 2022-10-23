@@ -10,10 +10,11 @@ from typing import List, Dict
 
 from variables import HEADERS, COLUMNS
 
-START_YEAR = 2022
+START_YEAR = 2010
 END_YEAR = datetime.datetime.today().year
 TIMEOUT = 1.2
 SAVE_DB = 'mongodb'
+COLLECTION = 'shots'
 
 def get_content_df(content: Dict) -> pd.DataFrame:
     results = content['resultSets'][0]
@@ -100,6 +101,18 @@ def format_df(df: pd.DataFrame, season: str) -> pd.DataFrame:
     df["_id"] = df["GAME_ID"].astype(str) + "_" + df["GAME_EVENT_ID"].astype(str)
     return df
 
+def load_from_csv(path='data/') -> pd.DataFrame:
+    df = pd.DataFrame()
+    for i in range(START_YEAR, END_YEAR + 1):
+        season_start = i
+        season_end = i+1
+        season = str(season_start) + "-" + str(season_end)[-2:]
+        filename = path + 'shotchart_' + season + '.csv'
+        df_year = pd.read_csv(filename)
+        df_year = df_year.drop('Unnamed: 0', axis=1)
+        df_year = format_df(df_year, season)
+        df = pd.concat([df, df_year])
+    return df
 
 def save_data(df):
     if SAVE_DB == 'mongodb':
@@ -111,13 +124,8 @@ def save_data(df):
 
 if __name__ == "__main__":
     players_by_season = get_players()
-    # print(players_by_season)
     print("Players list obtained!")
     shot_chart = get_shotchart(players_by_season)
     print("All shot charts obtained!")
-    # insertar en DB
-    try:
-        save_to_csv(df_shots_year, "shotchart_" + season + ".csv")
-    except Exception:
-        raise Exception(f"Could no save season {season} shot chart")
-    # save_to_mongo("shots", df)
+    save_to_mongo("shots", df)
+    print("Data inserted in mongodb!")
